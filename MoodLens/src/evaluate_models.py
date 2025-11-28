@@ -54,16 +54,13 @@ for name, model in models.items():
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     
-    # Основные метрики
-    accuracy = f1_score(y_test, y_pred, average='micro')  # Это и есть Top-1 Accuracy
+    accuracy = f1_score(y_test, y_pred, average='micro') 
     macro_f1 = f1_score(y_test, y_pred, average='macro')
     weighted_f1 = f1_score(y_test, y_pred, average='weighted')
     
-    # Per-class F1
     report = classification_report(y_test, y_pred, output_dict=True)
-    per_class_f1 = {cls: report[str(cls)]['f1-score'] for cls in range(len(report)-3)}  # без avg / total
+    per_class_f1 = {cls: report[str(cls)]['f1-score'] for cls in range(len(report)-3)} 
     
-    # Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
     
     print(f"{name}")
@@ -72,7 +69,6 @@ for name, model in models.items():
     print(f"   Weighted F1: {weighted_f1:.4f}")
     print(f"   Per-class F1: {per_class_f1}")
     
-    # Сохраняем результат
     results.append({
         'Model': name,
         'Accuracy': round(accuracy, 4),
@@ -81,12 +77,10 @@ for name, model in models.items():
         **{f'F1_Class_{i}': round(per_class_f1[i], 4) for i in range(len(per_class_f1))}
     })
     
-    # Сохраняем confusion matrix как CSV
     df_cm = pd.DataFrame(cm, index=[f"True_{i}" for i in range(len(cm))],
                          columns=[f"Pred_{i}" for i in range(len(cm))])
     df_cm.to_csv(os.path.join(RESULTS_DIR, f'cm_{name.replace(" ", "_").lower()}.csv'))
     
-    # Визуализация confusion matrix (опционально)
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=range(len(cm)), yticklabels=range(len(cm)))
     plt.title(f'Confusion Matrix - {name}')
@@ -96,7 +90,6 @@ for name, model in models.items():
     plt.savefig(os.path.join(RESULTS_DIR, f'cm_{name.replace(" ", "_").lower()}.png'))
     plt.close()
 
-# Итоговая таблица
 df = pd.DataFrame(results)
 df.to_csv(os.path.join(RESULTS_DIR, 'model_comparison.csv'), index=False)
 print("\nВсе результаты сохранены в папку 'results/'")

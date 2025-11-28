@@ -29,7 +29,6 @@ X_train = np.load(os.path.join(PROCESSED_DIR, 'landmarks_train.npy'))
 X_test = np.load(os.path.join(PROCESSED_DIR, 'landmarks_test.npy'))
 
 # Нормализация
-print("Нормализация...")
 X_train_norm = normalize_landmarks(X_train)
 X_test_norm = normalize_landmarks(X_test)
 

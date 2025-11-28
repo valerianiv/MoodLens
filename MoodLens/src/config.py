@@ -3,12 +3,12 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Пути
-DATA_DIR = os.path.join(BASE_DIR, 'data', 'RAF-DB')  # ← важно!
+DATA_DIR = os.path.join(BASE_DIR, 'data', 'RAF-DB')  
 PROCESSED_DIR = os.path.join(BASE_DIR, 'processed')
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 RESULTS_DIR = os.path.join(BASE_DIR, 'results')
 
-# Эмоции в порядке RAF-DB (basic emotions)
+# Эмоции в порядке RAF-DB 
 EMOTION_LABELS = [
     "surprise",    # 0
     "fear",        # 1

@@ -22,7 +22,7 @@ results = []
 for model_name, cm_file in model_files.items():
     cm_path = os.path.join(RESULTS_DIR, cm_file)
     if not os.path.exists(cm_path):
-        print(f"⚠️ Пропущена модель: {cm_path}")
+        print(f"Пропущена модель: {cm_path}")
         continue
 
     # Определяем формат по первой строке файла
@@ -39,7 +39,7 @@ for model_name, cm_file in model_files.items():
         cm = df.values  # теперь 7x7
 
     if cm.shape != (7, 7):
-        print(f"❌ Матрица {model_name} имеет размер {cm.shape}, пропускаем.")
+        print(f"Матрица {model_name} имеет размер {cm.shape}, пропускаем.")
         continue
 
     # Восстанавливаем y_true и y_pred
@@ -68,7 +68,7 @@ for model_name, cm_file in model_files.items():
 
 # Вывод
 df = pd.DataFrame(results).sort_values('Macro F1', ascending=False)
-print("\n📊 СРАВНЕНИЕ ПО MACRO F1")
+print("\nСравнение по macro F1")
 print("=" * 110)
 print(df.to_string(index=False, float_format="%.4f"))
 
@@ -108,4 +108,4 @@ plt.tight_layout()
 plt.savefig(os.path.join(RESULTS_DIR, f'cm_best_{best_model.replace(" ", "_").lower()}.png'))
 plt.show()
 
-print(f"\n🏆 Лучшая модель: {best_model} (Macro F1 = {df.iloc[0]['Macro F1']:.4f})")
+print(f"\nЛучшая модель: {best_model} (Macro F1 = {df.iloc[0]['Macro F1']:.4f})")
