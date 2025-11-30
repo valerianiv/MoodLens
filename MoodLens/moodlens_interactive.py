@@ -23,7 +23,7 @@ class EmotionClassifier:
     def load_model(self, path: str):
         try:
             # Проверка максимальной длины пути
-            if len(path) > 260:  # Максимальная длина пути в Windows
+            if len(path) > 260:  
                 raise ValueError("Слишком длинный путь к файлу модели")
                 
             if os.path.exists(path):
@@ -623,6 +623,9 @@ class EmotionRecognitionApp:
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка анализа: {str(e)}")
             self.update_status("Ошибка анализа эмоций")
+        finally:
+            import gc
+            gc.collect() 
 
     def generate_report(self):
         if not self.emotion_results:
