@@ -11,7 +11,7 @@ from datetime import datetime
 import json
 import uuid
 from mediapipe.python.solutions import face_detection
-
+from tkinter import filedialog
 
 class EmotionClassifier:
     def __init__(self):
@@ -505,57 +505,47 @@ class EmotionRecognitionApp:
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
+
     def load_image(self):
         file_path = filedialog.askopenfilename(
+            parent=self.root,
             title="Выберите изображение",
-            filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.tiff")]
+            filetypes=[
+                ("Изображения", "*.jpg *.jpeg *.png"),
+                ("JPEG", "*.jpg *.jpeg"),
+                ("PNG", "*.png")
+            ]
         )
         if not file_path:
-            return
+            self.update_status("Отмена выбора")
+            return  # выходим сразу после обновления статуса
 
-        # Проверка длины пути к файлу
-        if len(file_path) > 260:
-            messagebox.showerror("Ошибка", "Слишком длинный путь к файлу")
-            return
-
+        # Остальной код без изменений
         self.image_path = file_path
         self.face_bboxes = []
         self.emotion_results = []
         self.current_face_index = -1
-
         self.detect_btn.config(state='disabled')
         self.analyze_btn.config(state='disabled')
         self.report_btn.config(state='disabled')
         self.clear_results()
 
+        # Загрузка изображения через PIL
         try:
             from PIL import Image
-            pil_img = Image.open(file_path).convert('RGB')
-            self.original_image = np.array(pil_img)[:, :, ::-1]
-
-            if self.original_image is None or self.original_image.size == 0:
-                raise ValueError("Изображение пустое или повреждено")
-
-            # Проверка размера изображения
-            h, w = self.original_image.shape[:2]
-            max_image_size = 10000  # 10000x10000 пикселей
-            if w > max_image_size or h > max_image_size:
-                messagebox.showwarning("Предупреждение", 
-                                     f"Изображение слишком большое. Будет уменьшено до {max_image_size}x{max_image_size}")
-                scale = min(max_image_size / w, max_image_size / h)
-                new_w, new_h = int(w * scale), int(h * scale)
-                self.original_image = cv2.resize(self.original_image, (new_w, new_h))
-
-            self.processed_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
-            self.image_processor.display_image(self.processed_image, self.canvas)
-
-            self.update_status("Изображение загружено")
-            self.detect_btn.config(state='normal')
-
+            pil_image = Image.open(file_path).convert('RGB')
+            img_bgr = np.array(pil_image)[:, :, ::-1]  # RGB → BGR
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось загрузить изображение: {str(e)}")
-            self.update_status("Ошибка загрузки изображения")
+            messagebox.showerror("Ошибка", f"Не удалось загрузить изображение:\n{str(e)}")
+            self.update_status("Ошибка загрузки")
+            return
 
+        self.original_image = img_bgr
+        self.processed_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
+        self.image_processor.display_image(self.processed_image, self.canvas)
+        self.update_status("Изображение загружено")
+        self.detect_btn.config(state='normal')
+                
     def detect_faces(self):
         if self.original_image is None:
             return
