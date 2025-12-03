@@ -35,9 +35,9 @@ FER может улучшить игровой опыт, позволяя пер
 ---------------------------
 ### Технические особенности
 Для сравнения были выбраны SimpleCNN, FerConvNet, MLP, EfficientNet_B0, SVM, Random Forest. Сравнение по macro F1 представлено на изображении.
-![сравнение](сравнение macro f1.png)
+![сравнение](сравнение_macro_f1.png)
 Матрица ошибок для SimpleCNN представлена на изображении.
-![матрица ошибок](матрица ошибок simplecnn.png)
+![матрица ошибок](матрица_ошибок_simplecnn.png)
 В таблице приведены значения метрик каждой модели.
 | Модель | Accuracy | Macro F1 | Weighted F1 |
 |-------------|-------------|-------------|-------------|
@@ -47,3 +47,36 @@ FER может улучшить игровой опыт, позволяя пер
 | EfficientNetB0_48   | 0.5675   | 0.4577     |  0.5719    |
 |  SVM (RBF)   | 0.5487  | 0.4497   |  0.5585    |
 | Random Forest    | 0.5638   | 0.3642    |  0.5122   |
+---------------------------------------
+### Установка и запуск
+Скачайте или клонируйте проект
+
+``` text
+git clone https://github.com/valerianiv/MoodLens/tree/main/MoodLens
+cd MoodLens
+```
+Создайте виртуальное окружение
+```text
+# для Windows
+python -m venv venv 
+
+# для Ubuntu
+python3 -m venv venv
+```
+
+Активируйте виртуальное окружение
+``` text
+# для Windows (CMD)
+.\venv\Scripts\activate.bat
+# для Windows (PowerShell)
+venv\Scripts\Activate.ps1
+
+# для Ubuntu
+source venv/bin/activate
+```
+Установите зависимости
+```text
+pip install -upgrade pip
+pip install -r requirements.txt
+```
+Убедитесь, что ваши версии совместимы. При создании программной системы использовались такие версии: mediapipe 0.10.21, keras 3.12.0, protobuf 6.33.1, tensorflow 2.20.0, opencv-python 4.8.1.78.
