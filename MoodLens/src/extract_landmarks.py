@@ -5,9 +5,10 @@ from tqdm import tqdm
 from mediapipe.python.solutions import face_mesh
 from .config import DATA_DIR, PROCESSED_DIR, EMOTION_TO_IDX, EMOTION_LABELS
 
-
+# Возвращение координат 68 ключевых точек лица 
 def extract_single_landmarks(image_path):
     try:
+        # Чтение изображения с обработкой ошибок 
         with open(image_path, "rb") as f:
             bytes_data = bytearray(f.read())
         if not bytes_data:
@@ -20,17 +21,20 @@ def extract_single_landmarks(image_path):
     if image is None:
         return []
 
+    # Конвертация форматов изображения для корректной обработки MediaPipe
     if len(image.shape) == 2:
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     elif image.shape[2] == 4:
         image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
 
     h, w = image.shape[:2]
+    # Увеличение маленьких изображений для лучшей детекции лиц
     scale_factor = 2 if h < 100 or w < 100 else 1
     enlarged = cv2.resize(image, (w * scale_factor, h * scale_factor), interpolation=cv2.INTER_CUBIC)
 
     rgb = cv2.cvtColor(enlarged, cv2.COLOR_BGR2RGB)
 
+    # Инициализация MediaPipe Face Mesh
     with face_mesh.FaceMesh(
         static_image_mode=True,
         max_num_faces=1,
@@ -50,17 +54,19 @@ def extract_single_landmarks(image_path):
 
 
 def process_rafdb():
+    # Нахождение ключевых точек лица и сохранение в numpy файлы для обучения
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     dataset_dir = os.path.join(DATA_DIR, 'DATASET')
+    # Маппинг номеров папок датасета
     label_map = {
-        '1': 'surprise',
-        '2': 'fear',
-        '3': 'disgust',
-        '4': 'happiness',
-        '5': 'sadness',
-        '6': 'anger',
-        '7': 'neutral'
+        '1': 'surprise',  # Удивление
+        '2': 'fear',      # Страх
+        '3': 'disgust',   # Отвращение
+        '4': 'happiness', # Радость
+        '5': 'sadness',   # Грусть
+        '6': 'anger',     # Злость
+        '7': 'neutral'    # Безразличие
     }
 
     # Списки для train и test
@@ -73,7 +79,7 @@ def process_rafdb():
             print(f"Папка {split} не найдена: {split_dir}")
             continue
 
-        print(f"Обработка {split}...")
+        print(f"Обработка {split}")
 
         for label_folder in sorted(os.listdir(split_dir)):
             if label_folder not in label_map:
@@ -104,9 +110,10 @@ def process_rafdb():
                             test_landmarks.append(lm)
                             test_labels.append(label_idx)
 
-    # Сохраняем отдельно
+    # Обучающая выборка
     np.save(os.path.join(PROCESSED_DIR, 'landmarks_train.npy'), np.array(train_landmarks))
     np.save(os.path.join(PROCESSED_DIR, 'labels_train.npy'), np.array(train_labels))
+    # Тестовая выборка
     np.save(os.path.join(PROCESSED_DIR, 'landmarks_test.npy'), np.array(test_landmarks))
     np.save(os.path.join(PROCESSED_DIR, 'labels_test.npy'), np.array(test_labels))
 

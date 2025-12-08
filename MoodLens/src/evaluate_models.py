@@ -10,8 +10,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 from tensorflow.keras.models import load_model
+
 warnings.filterwarnings('ignore')
 
+# Создание директории для хранения результатов, если она не существует
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # Загрузка нормализованных данных
@@ -22,7 +24,7 @@ y_test = np.load(os.path.join(PROCESSED_DIR, 'labels_test.npy'))
 
 print(f"Размеры: train={X_train.shape}, test={X_test.shape}")
 
-# Модели
+# Определение классических моделей машинного обучения
 models = {
     "Random Forest": RandomForestClassifier(
         n_estimators=200,
@@ -47,28 +49,36 @@ models = {
     )
 }
 
+# Список для хранения результатов модели
 results = []
 
+# Цикл обучения и оценки каждой модели
 for name, model in models.items():
     print(f"\nОбучение {name}...")
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     
+    # Micro avg accuracy 
     accuracy = f1_score(y_test, y_pred, average='micro') 
+    # Marco F1
     macro_f1 = f1_score(y_test, y_pred, average='macro')
+    # Weighted F1 
     weighted_f1 = f1_score(y_test, y_pred, average='weighted')
     
     report = classification_report(y_test, y_pred, output_dict=True)
     per_class_f1 = {cls: report[str(cls)]['f1-score'] for cls in range(len(report)-3)} 
     
+    # Матрица ошибок
     cm = confusion_matrix(y_test, y_pred)
     
+    # Вывод метрик в консоль
     print(f"{name}")
     print(f"   Accuracy: {accuracy:.4f}")
     print(f"   Macro F1: {macro_f1:.4f}")
     print(f"   Weighted F1: {weighted_f1:.4f}")
     print(f"   Per-class F1: {per_class_f1}")
     
+    # Сохранение результатов модели в словарь
     results.append({
         'Model': name,
         'Accuracy': round(accuracy, 4),
@@ -81,6 +91,7 @@ for name, model in models.items():
                          columns=[f"Pred_{i}" for i in range(len(cm))])
     df_cm.to_csv(os.path.join(RESULTS_DIR, f'cm_{name.replace(" ", "_").lower()}.csv'))
     
+    # Визуализация матрицы ошибок в виде тепловой карты
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=range(len(cm)), yticklabels=range(len(cm)))
     plt.title(f'Confusion Matrix - {name}')

@@ -3,11 +3,9 @@ import numpy as np
 from src.config import PROCESSED_DIR
 
 def normalize_landmarks(X):
-    """
-    Нормализует landmarks: центрирует по носу и масштабирует по межзрачковому расстоянию.
-    Вход: (N, 136)
-    Выход: (N, 136)
-    """
+ 
+    # Нормализует landmarks: центрирует по носу и масштабирует по межзрачковому расстоянию.
+  
     normalized = []
     for lm in X:
         coords = lm.reshape(68, 2)  # (68, 2)

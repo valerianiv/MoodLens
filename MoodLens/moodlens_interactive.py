@@ -14,12 +14,14 @@ from mediapipe.python.solutions import face_detection
 from tkinter import filedialog
 
 class EmotionClassifier:
+    # Инициализация классификатора с параметрами по умолчанию
     def __init__(self):
         self.model_path = None
         self.input_size = (48, 48)
         self.emotion_categories = ['Удивление', 'Страх', 'Отвращение', 'Радость', 'Грусть', 'Злость', 'Безразличие']
         self.model = None
     
+    # Загрузка модели классификатора из файла
     def load_model(self, path: str):
         try:
             # Проверка максимальной длины пути
@@ -37,6 +39,7 @@ class EmotionClassifier:
             print(f"Ошибка загрузки модели: {e}")
             return False
     
+    # Предобработка изображений перед подачей в модель
     def preprocess_face(self, face_roi: np.ndarray) -> np.ndarray:
         if face_roi.size == 0:
             raise ValueError("Пустая область лица")
@@ -46,13 +49,18 @@ class EmotionClassifier:
         if face_roi.shape[0] > max_input_size or face_roi.shape[1] > max_input_size:
             raise ValueError(f"Размер изображения лица превышает максимально допустимый: {max_input_size}x{max_input_size}")
         
+        # Конвертация в оттенки серого
         face_gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+        # Изменение размера до требуемого моделью
         face_resized = cv2.resize(face_gray, self.input_size)
+        # Нормализация пикселей
         face_input = face_resized.astype('float32') / 255.0
+        # Добавление размерностей
         face_input = np.expand_dims(face_input, axis=(0, -1))
         
         return face_input
     
+    # Предсказание эмоций для предобработанного изображения
     def predict_emotion(self, face_data: np.ndarray) -> dict:
         if self.model is None:
             raise ValueError("Модель не загружена")
@@ -69,6 +77,7 @@ class EmotionClassifier:
             raise ValueError("Количество предсказанных эмоций не соответствует ожидаемому")
         
         emotions = {self.emotion_categories[j]: float(pred[j]) for j in range(len(self.emotion_categories))}
+        # Определение доминирующей эмоции
         dominant_emotion, dominant_prob = self.get_dominant_emotion(pred)
         
         return {
@@ -77,6 +86,7 @@ class EmotionClassifier:
             'dominant_prob': dominant_prob
         }
     
+    # Определение доминирующей эмоции из массива вероятностей
     def get_dominant_emotion(self, predictions: np.ndarray) -> tuple:
         # Проверка валидности индекса
         if len(predictions) == 0:
@@ -88,6 +98,7 @@ class EmotionClassifier:
         if dominant_idx < 0 or dominant_idx >= len(self.emotion_categories):
             raise ValueError(f"Некорректный индекс доминирующей эмоции: {dominant_idx}")
             
+        # Получение названия эмоции и преобразование вероятности в проценты
         dominant_emotion = self.emotion_categories[dominant_idx]
         dominant_prob = float(np.max(predictions)) * 100
         return dominant_emotion, dominant_prob
@@ -97,8 +108,10 @@ class FaceDetector:
     def __init__(self):
         self.face_detection_model = None
         self.detection_confidence = 0.3
-        self.max_faces = 20  # Максимальное количество лиц для обработки
+        # Максимальное количество лиц для обработки
+        self.max_faces = 20  
     
+    # Обнаружение лиц на изображении
     def detect_faces(self, image: np.ndarray) -> list:
         # Проверка размера входного изображения
         if image.size == 0:
@@ -108,23 +121,26 @@ class FaceDetector:
         if image.shape[0] > max_image_size or image.shape[1] > max_image_size:
             raise ValueError(f"Размер изображения превышает максимально допустимый: {max_image_size}x{max_image_size}")
         
+        # Конвертация в rgb
         rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w = rgb.shape[:2]
         face_bboxes = []
 
+        # Инициализация MediaPipe Face Detection
         with face_detection.FaceDetection(
             model_selection=1,
             min_detection_confidence=self.detection_confidence
         ) as fd:
             results = fd.process(rgb)
 
+        # Обработка обнаруженных лиц
         if results.detections:
             # Ограничение максимального количества лиц
             faces_to_process = min(len(results.detections), self.max_faces)
             
             for i, detection in enumerate(results.detections):
                 if i >= faces_to_process:
-                    break  # Прекращаем обработку после достижения лимита
+                    break  # Прекращение обработки после достижения лимита
                     
                 bbox = detection.location_data.relative_bounding_box
                 x_min, y_min, width, height = self.calculate_face_coordinates(bbox, w, h)
@@ -132,6 +148,7 @@ class FaceDetector:
 
         return face_bboxes
     
+    # Создание ограничивающих рамок вокруг лиц на изображении
     def draw_bounding_boxes(self, image: np.ndarray, boxes: list) -> np.ndarray:
         # Проверка количества bounding boxes
         if len(boxes) > self.max_faces:
@@ -147,13 +164,13 @@ class FaceDetector:
             
             # Проверка координат bounding box
             if (x < 0 or y < 0 or x + w_box > image.shape[1] or y + h_box > image.shape[0]):
-                continue  # Пропуск некорректных bounding boxes
-                
+                continue  
+            # Рисование прямоугольника
             cv2.rectangle(img_with_boxes, (x, y), (x + w_box, y + h_box), color, 2)
             
             # Проверка длины текста
             face_text = f'Face {i+1}'
-            if len(face_text) > 50:  # Ограничение длины текста
+            if len(face_text) > 50:  
                 face_text = face_text[:50]
                 
             cv2.putText(img_with_boxes, face_text, (x, y - 10), 
@@ -161,6 +178,7 @@ class FaceDetector:
 
         return img_with_boxes
     
+    # Конвертация относительных координат в абсолютные
     def calculate_face_coordinates(self, bbox, image_width: int, image_height: int) -> tuple:
         # Проверка входных параметров
         if image_width <= 0 or image_height <= 0:
@@ -185,11 +203,13 @@ class ImageProcessor:
         self.canvas_offset_y = 0
         self.photo = None
     
+    # Отображение изображения на холсте
     def display_image(self, image: np.ndarray, canvas: tk.Canvas):
         # Проверка размера изображения
         if image.size == 0:
             raise ValueError("Пустое изображение для отображения")
-            
+        
+        # Получение текущих размеров холста
         canvas_w = canvas.winfo_width()
         canvas_h = canvas.winfo_height()
         
@@ -207,14 +227,18 @@ class ImageProcessor:
             image = cv2.resize(image, (w, h))
         
         self.scale_factor = min(canvas_w / w, canvas_h / h)
+        # Новые размеры с сохранением пропорций
         new_w, new_h = int(w * self.scale_factor), int(h * self.scale_factor)
         
+        # Изменение размера изображения
         resized = self.resize_image(image, new_w, new_h)
         self.photo = self.convert_to_tkinter(resized)
         
+        # Очистка холста и отображение нового изображения
         canvas.delete("all")
         canvas.create_image(canvas_w // 2, canvas_h // 2, image=self.photo, anchor=tk.CENTER)
         
+        # Расчет смещений для центрирования изображения
         self.canvas_offset_x = (canvas_w - new_w) // 2
         self.canvas_offset_y = (canvas_h - new_h) // 2
     
@@ -238,6 +262,7 @@ class ImageProcessor:
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5 if i != selected_index else 0.6, color, thickness)
         return img_highlight
     
+    # Обработка клика на холсте
     def on_canvas_click(self, event, boxes: list, scale_factor: float, offset_x: float, offset_y: float) -> int:
         x_click = (event.x - offset_x) / scale_factor
         y_click = (event.y - offset_y) / scale_factor
@@ -252,13 +277,14 @@ class ImageProcessor:
         if new_w <= 0 or new_h <= 0:
             raise ValueError("Некорректные размеры для ресайза")
         return cv2.resize(image, (new_w, new_h))
-    
+    # Конвертация изображения Numpy в формат Tkinter PhotoImage
     def convert_to_tkinter(self, image: np.ndarray) -> ImageTk.PhotoImage:
         pil_image = Image.fromarray(image)
         return ImageTk.PhotoImage(pil_image)
 
 
 class ReportGenerator:
+    # Инициализация генерации отчетов
     def __init__(self):
         self.report_data = {}
         self.pdf_pages = None
@@ -266,6 +292,7 @@ class ReportGenerator:
         self.colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#95a5a6', '#3498db', '#9b59b6']
         self.max_filename_length = 255  # Максимальная длина имени файла
     
+    # Создание титульной страницы отчета
     def create_title_page(self, image_path: str):
         # Проверка длины имени файла
         filename = os.path.basename(image_path)
@@ -280,16 +307,20 @@ class ReportGenerator:
         ax.text(0.5, 0.3, f'Изображение: {filename}', fontsize=12, ha='center')
         return fig
     
+    # Создание страницы с изображением и ограничивающими рамками
     def add_image_page(self, image: np.ndarray, bboxes: list):
         fig, ax = plt.subplots(figsize=self.figure_size)
         plt.subplots_adjust(left=0.1, right=0.9, top=0.85, bottom=0.15)
         ax.axis('off')
 
+        # Конвертация bgr в rgb
         img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         if img_rgb.dtype != np.uint8:
             img_rgb = img_rgb.astype(np.uint8)
 
+        # Получение размеров изображения
         img_h, img_w = img_rgb.shape[:2]
+        # Расчет максимальных размеров для отображения
         max_img_width_px = int(0.6 * self.figure_size[0] * 300)
         max_img_height_px = int(0.5 * self.figure_size[1] * 300)
         scale = min(1.0, max_img_width_px / img_w, max_img_height_px / img_h)
@@ -300,6 +331,7 @@ class ReportGenerator:
         pil_img = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
         img_display = np.array(pil_img)
 
+        # Отображение изображения
         ax.imshow(img_display, interpolation='none', cmap='gray')
         ax.set_title('Исходное изображение', fontsize=14, pad=20, ha='center')
 
@@ -327,6 +359,7 @@ class ReportGenerator:
         ax.set_yticks([])
         return fig
     
+    # Генерация данных для таблицы распределения эмоций
     def generate_table_data(self, emotion_data: dict) -> list:
         table_data = []
         for emotion, prob in emotion_data.items():
@@ -337,31 +370,38 @@ class ReportGenerator:
             table_data.append([emotion_name, f"{prob*100:.1f}%"])
         return table_data
     
+    # Создание страниц с графиками распределения эмоций для каждого лица
     def add_emotion_charts(self, emotion_results: list):
         figures = []
         emotions_list = ['Удивление', 'Страх', 'Отвращение', 'Радость', 'Грусть', 'Злость', 'Безразличие']
         
+        # Создание графиков для каждого лица
         for result in emotion_results:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=self.figure_size)
             plt.subplots_adjust(left=0.08, right=0.95, top=0.85, bottom=0.15, wspace=0.3)
 
+            # Сортировка эмоций по убыванию вероятности
             sorted_emotions = sorted(result['emotions'].items(), key=lambda x: x[1], reverse=True)
             sorted_labels = [item[0] for item in sorted_emotions]
             sorted_probs = [item[1] * 100 for item in sorted_emotions]
             sorted_colors = [self.colors[emotions_list.index(label)] for label in sorted_labels]
 
+            # Создание столбчатой диаграммы
             bars = ax1.bar(sorted_labels, sorted_probs, color=sorted_colors, alpha=0.7, width=0.6)
             ax1.set_title(f'Гистограмма для лица {result["face_index"] + 1}', fontsize=16, pad=15)
             ax1.set_ylabel('Вероятность (%)', fontsize=12)
             ax1.set_ylim(0, 100)
+            # Настройка осей
             ax1.tick_params(axis='x', labelsize=10, rotation=45)
             ax1.tick_params(axis='y', labelsize=10)
             ax1.set_xticklabels(sorted_labels, rotation=45, ha='right')
             
+            # Добавление значений над столбцами
             for bar, prob in zip(bars, sorted_probs):
                 ax1.text(bar.get_x() + bar.get_width()/2., min(prob + 2, 98),
                         f'{prob:.1f}%', ha='center', va='bottom', fontsize=9)
 
+            # Создание таблицы со статистикой
             ax2.axis('off')
             table_data = self.generate_table_data(result['emotions'])
             table = ax2.table(cellText=table_data,
@@ -378,11 +418,12 @@ class ReportGenerator:
         
         return figures
     
+    # Сохранение отчета в pdf файл
     def save_report(self, file_path: str, image_path: str, original_image: np.ndarray, 
                    face_bboxes: list, emotion_results: list):
         try:
             # Проверка длины пути для сохранения
-            if len(file_path) > 260:  # Максимальная длина пути в Windows
+            if len(file_path) > 260:  # Максимальная длина пути
                 raise ValueError("Слишком длинный путь для сохранения отчета")
                 
             with PdfPages(file_path) as pdf:
@@ -390,12 +431,15 @@ class ReportGenerator:
                     pdf.savefig(fig, bbox_inches=None, pad_inches=0, dpi=300)
                     plt.close(fig)
 
+                # Добавление титульной страницы
                 title_fig = self.create_title_page(image_path)
                 save_figure(title_fig)
 
+                # Добавление страницы с изображением
                 image_fig = self.add_image_page(original_image, face_bboxes)
                 save_figure(image_fig)
 
+                # Добавление страниц с графиками для каждого лица
                 emotion_figures = self.add_emotion_charts(emotion_results)
                 for fig in emotion_figures:
                     save_figure(fig)
@@ -407,6 +451,7 @@ class ReportGenerator:
 
 
 class EmotionRecognitionApp:
+    # Инициализация приложения
     def __init__(self, root):
         self.root = root
         self.root.title("MoodLens - Система распознавания эмоций")
@@ -429,22 +474,27 @@ class EmotionRecognitionApp:
         self.setup_styles()
         self.create_widgets()
 
+    # Настройка стилей для элементов интерфейса
     def setup_styles(self):
+        # Настройка стилей для разных виджетов 
         self.style = ttk.Style()
         self.style.configure('TFrame', background='#2c3e50')
         self.style.configure('TLabel', background='#2c3e50', foreground='white', font=('Consolas', 10))
         self.style.configure('Title.TLabel', font=('Consolas', 16, 'bold'), foreground='#3498db')
         self.style.configure('TButton', font=('Consolas', 10), padding=10)
 
+    # Загрузка необходимых ресурсов
     def load_resources(self):
         model_path = os.path.join('models', 'simplecnn.h5')
         if not self.emotion_classifier.load_model(model_path):
             messagebox.showwarning("Предупреждение", "Модель классификации эмоций не найдена")
 
+    # Создание всех элементов графического интерфейса
     def create_widgets(self):
         main_container = ttk.Frame(self.root)
         main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
+        # Заголовок приложения
         title_frame = ttk.Frame(main_container)
         title_frame.pack(fill=tk.X, side=tk.TOP, pady=(0, 20))
         title_label = tk.Label(title_frame, text="MoodLens", 
@@ -452,6 +502,7 @@ class EmotionRecognitionApp:
                               fg="#3498db", bg='#2c3e50')
         title_label.pack(expand=True)
 
+        # Контейнер для основного содержимого
         content_frame = ttk.Frame(main_container)
         content_frame.pack(fill=tk.BOTH, expand=True)
         content_frame.grid_rowconfigure(0, weight=0)
@@ -459,6 +510,7 @@ class EmotionRecognitionApp:
         content_frame.grid_columnconfigure(0, weight=1, uniform="equal")
         content_frame.grid_columnconfigure(1, weight=1, uniform="equal")
 
+        # Фрейм для загрузки изображения
         upload_frame = ttk.LabelFrame(content_frame, text="Загрузка изображения", padding=15)
         upload_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
         upload_buttons = ttk.Frame(upload_frame)
@@ -468,6 +520,7 @@ class EmotionRecognitionApp:
         self.upload_btn = ttk.Button(upload_buttons, text="Загрузить фото", command=self.load_image)
         self.upload_btn.grid(row=0, column=0, sticky="nsew", padx=5, pady=10)
 
+        # Фрейм управления
         control_frame = ttk.LabelFrame(content_frame, text="Управление", padding=15)
         control_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=(0, 10))
         control_buttons = ttk.Frame(control_frame)
@@ -477,6 +530,7 @@ class EmotionRecognitionApp:
         control_buttons.grid_columnconfigure(2, weight=1)
         control_buttons.grid_rowconfigure(0, weight=1)
         
+        # Кнопки управления
         self.detect_btn = ttk.Button(control_buttons, text="Найти лица", command=self.detect_faces, state='disabled')
         self.detect_btn.grid(row=0, column=0, sticky="nsew", padx=5, pady=10)
         
@@ -486,12 +540,14 @@ class EmotionRecognitionApp:
         self.report_btn = ttk.Button(control_buttons, text="Создать отчет PDF", command=self.generate_report, state='disabled')
         self.report_btn.grid(row=0, column=2, sticky="nsew", padx=5, pady=10)
 
+        # Фрейм для отображения изображения
         self.image_frame = ttk.LabelFrame(content_frame, text="Предпросмотр", padding=10)
         self.image_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=0)
         self.canvas = tk.Canvas(self.image_frame, bg='#34495e', highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind("<Button-1>", self.on_canvas_click)
 
+        # Фрейм для отображения результатов
         results_frame = ttk.LabelFrame(content_frame, text="Результаты анализа", padding=10)
         results_frame.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=0)
         self.results_text = tk.Text(results_frame, wrap=tk.WORD,
@@ -505,7 +561,7 @@ class EmotionRecognitionApp:
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
-
+    # Загрузка изображение через проводник
     def load_image(self):
         file_path = filedialog.askopenfilename(
             parent=self.root,
@@ -518,13 +574,14 @@ class EmotionRecognitionApp:
         )
         if not file_path:
             self.update_status("Отмена выбора")
-            return  # выходим сразу после обновления статуса
+            return  
 
         # Остальной код без изменений
         self.image_path = file_path
         self.face_bboxes = []
         self.emotion_results = []
         self.current_face_index = -1
+        # Отключение кнопок до выполнения операций
         self.detect_btn.config(state='disabled')
         self.analyze_btn.config(state='disabled')
         self.report_btn.config(state='disabled')
@@ -542,16 +599,19 @@ class EmotionRecognitionApp:
 
         self.original_image = img_bgr
         self.processed_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
+        # Отображение изображения на холсте
         self.image_processor.display_image(self.processed_image, self.canvas)
         self.update_status("Изображение загружено")
         self.detect_btn.config(state='normal')
                 
+    # Обнаружение лиц на изображении
     def detect_faces(self):
         if self.original_image is None:
             return
 
         self.update_status("Обнаружение лиц")
         try:
+            # Вызов детектора лиц
             self.face_bboxes = self.face_detector.detect_faces(self.original_image)
 
             if not self.face_bboxes:
@@ -569,6 +629,7 @@ class EmotionRecognitionApp:
             messagebox.showerror("Ошибка", f"Ошибка обнаружения: {str(e)}")
             self.update_status("Ошибка обнаружения лиц")
 
+    # Анализ эмоций для всех обнаруженных лиц
     def analyze_all_faces(self):
         if not self.face_bboxes or self.emotion_classifier.model is None:
             return
@@ -591,6 +652,7 @@ class EmotionRecognitionApp:
                 face_input = self.emotion_classifier.preprocess_face(face_roi)
                 emotion_prediction = self.emotion_classifier.predict_emotion(face_input)
 
+                # Сохранение результатов
                 result = {
                     'face_index': i,
                     'coordinates': (x, y, w, h),
@@ -604,6 +666,7 @@ class EmotionRecognitionApp:
                 self.emotion_results.append(result)
                 self.display_results(result)
 
+            # Активация кнопки отчета, если есть результаты
             if self.emotion_results:
                 self.current_face_index = 0
                 self.report_btn.config(state='normal')
@@ -614,9 +677,11 @@ class EmotionRecognitionApp:
             messagebox.showerror("Ошибка", f"Ошибка анализа: {str(e)}")
             self.update_status("Ошибка анализа эмоций")
         finally:
+            # Очистка памяти
             import gc
             gc.collect() 
 
+    # Генерация отчета с результатами анализа
     def generate_report(self):
         if not self.emotion_results:
             messagebox.showwarning("Предупреждение", "Нет данных для отчета")
@@ -665,9 +730,10 @@ class EmotionRecognitionApp:
             self.image_processor.display_image(img_highlight, self.canvas)
             self.update_status(f"Выбрано лицо {self.current_face_index + 1}")
 
+    # Отображение результатов анализа в текстовом виджете
     def display_results(self, result):
         self.results_text.config(state='normal')
-        
+        # Заголовок для текущего лица
         self.results_text.insert(tk.END, f"Анализ лица {result['face_index'] + 1}\n\n")
         self.results_text.insert(tk.END, f"Доминирующая эмоция: {result['dominant_emotion']}\n")
         self.results_text.insert(tk.END, f"Уверенность: {result['dominant_prob']:.1f}%\n\n")
@@ -682,20 +748,26 @@ class EmotionRecognitionApp:
             if len(emotion_display) > 20:
                 emotion_display = emotion_display[:20] + "..."
                 
+            # Формирование вероятности
             prob_str = f"{prob*100:5.1f}"
+            # Создание текстовой гистограммы
             bar = "█" * int(prob * 100 / 5)
+            # Выравнивание названий эмоций
             label_part = f"{emotion_display}:"
             padding = " " * (max_label_len - len(emotion_display) + 1)
+            # Добавление строки в текст
             self.results_text.insert(tk.END, f"{label_part}{padding}{prob_str}% {bar}\n")
 
         self.results_text.insert(tk.END, "\n")
         self.results_text.config(state='disabled')
 
+    # Очищение текстового поля с результатами
     def clear_results(self):
         self.results_text.config(state='normal')
         self.results_text.delete(1.0, tk.END)
         self.results_text.config(state='disabled')
 
+    # Обновление строки состояния
     def update_status(self, message):
         # Ограничение длины статусного сообщения
         if len(message) > 100:
